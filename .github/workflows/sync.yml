@@ -1,0 +1,41 @@
+name: Eden
+
+on:
+  schedule:
+    - cron: '0 * * * *'  
+  workflow_dispatch:
+
+jobs:
+  sync-eden-upstream:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Set up Git config
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Fetch and check out upstream master
+        run: |
+          git remote add upstream https://git.eden-emu.dev/eden-emu/eden || git remote set-url upstream https://git.eden-emu.dev/eden-emu/eden
+          git fetch upstream
+          git checkout -B master upstream/master
+
+      - name: Remove .github directory
+        run: |
+          rm -rf .github
+          git rm -r --cached .github || true
+
+      - name: Commit removal (if needed)
+        run: |
+          if ! git diff --cached --quiet; then
+            git commit -m "Remove .github directory to comply with GitHub Actions restrictions"
+          fi
+
+      - name: Force push to GitHub master branch
+        run: |
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+          git push origin master --force
